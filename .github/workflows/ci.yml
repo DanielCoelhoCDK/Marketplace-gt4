@@ -1,0 +1,84 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality-and-security:
+    name: Lint, Test, Coverage & Security
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: marketplace_user
+          POSTGRES_PASSWORD: marketplace_pass
+          POSTGRES_DB: marketplace_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Secret Scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Linter (ESLint)
+        run: npm run lint
+
+      - name: OpenAPI Specification Lint (Spectral)
+        run: npm run lint:openapi
+
+      - name: Dependency SCA (npm audit)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Setup Database (Prisma Push)
+        env:
+          DATABASE_URL: "postgresql://marketplace_user:marketplace_pass@localhost:5432/marketplace_db?schema=public"
+        run: npx prisma db push
+
+      - name: Run Tests with Coverage (Vitest)
+        env:
+          DATABASE_URL: "postgresql://marketplace_user:marketplace_pass@localhost:5432/marketplace_db?schema=public"
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+        run: npm run test:coverage
+
+      - name: Build TypeScript Project
+        run: npm run build
+
