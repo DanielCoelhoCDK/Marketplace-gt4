@@ -16,7 +16,7 @@ O sistema é um **Monólito Modular** em TypeScript que simula um Marketplace de
 
 ```mermaid
 graph TD
-    Client(["Cliente / k6"]) -->|HTTP / JSON| API["Fastify API (Monólito Modular)"]
+    Client["Cliente / k6"] -->|"HTTP / JSON"| API["Fastify API (Monólito Modular)"]
     
     subgraph Modulos["Módulos Internos"]
         API --> Cat["Módulo Catálogo"]
@@ -24,14 +24,14 @@ graph TD
         API --> Pay["Módulo Pagamento"]
     end
     
-    Cat -->|Cache-Aside (TTL 60s)| Redis[(Redis Cache)]
-    Cat -->|Leitura Primária| PG[(PostgreSQL)]
-    Ord -->|Transação Atômica (100k+ registros)| PG
-    Pay -->|Enfileiramento & Idempotência| Bull[(Redis / BullMQ)]
-    Pay -->|Atualização de Status| PG
+    Cat -->|"Cache-Aside (TTL 60s)"| Redis[("Redis Cache")]
+    Cat -->|"Leitura Primária"| PG[("PostgreSQL")]
+    Ord -->|"Transação Atômica (100k+ registros)"| PG
+    Pay -->|"Enfileiramento & Idempotência"| Bull[("Redis / BullMQ")]
+    Pay -->|"Atualização de Status"| PG
     
-    API -.->|Métricas RED (:9090)| Prom["Prometheus Server"]
-    API -.->|Logs JSON Estruturados Nativos| Pino["Pino Logger (Nativo Fastify)"]
+    API -.->|"Métricas RED (:9090)"| Prom["Prometheus Server"]
+    API -.->|"Logs JSON Estruturados Nativos"| Pino["Pino Logger (Nativo Fastify)"]
 ```
 
 ### Por que Fastify + Pino?
