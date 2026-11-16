@@ -30,9 +30,12 @@ graph TD
     Pay -->|Enfileiramento & Idempotência| Bull[(Redis / BullMQ)]
     Pay -->|Atualização de Status| PG
     
-    API -.->|Métricas RED| Prom["Prometheus (:9090)"]
-    API -.->|Logs JSON Estruturados| Pino["Pino Logger"]
+    API -.->|Métricas RED (:9090)| Prom["Prometheus Server"]
+    API -.->|Logs JSON Estruturados Nativos| Pino["Pino Logger (Nativo Fastify)"]
 ```
+
+### Por que Fastify + Pino?
+A escolha do **Fastify** como framework web e servidor HTTP se deu por sua alta performance e pelo fato de **trazer o logger Pino integrado nativamente**. Isso garante que todas as requisições gerem **logs estruturados em JSON** por padrão (incluindo `reqId`, `level`, `time`, `pid`), permitindo ingestão direta por coletores de logs sem a sobrecarga de middlewares pesados e sem bloquear o *Event Loop* do Node.js.
 
 ---
 

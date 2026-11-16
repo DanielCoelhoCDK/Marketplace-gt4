@@ -15,16 +15,19 @@ Precisávamos decidir a arquitetura do sistema (monólito tradicional vs. micros
 
 ## Opções Consideradas
 1. **Microsserviços distribuídos** (serviço de catálogo, serviço de pedidos e serviço de pagamento isolados com bancos próprios).
-2. **Monólito Modular** (um único processo de runtime, módulos isolados por limites explícitos em código, banco de dados compartilhado logicamente com schemas/tabelas delimitadas).
-3. **Monólito Clássico (Big Ball of Mud)** (todas as regras misturadas em controladores globais).
+2. **Monólito Modular com Fastify e Pino** (um único processo de runtime em Fastify, módulos isolados por limites explícitos em código, logs estruturados nativos em JSON com Pino, banco de dados compartilhado logicamente com schemas/tabelas delimitadas).
+3. **Monólito Clássico (Big Ball of Mud) com Express** (todas as regras misturadas em controladores globais, dependência de middlewares pesados externos para logs).
 
 ## Decisão Tomada
-Optamos pela **Opção 2: Monólito Modular** com **Prisma ORM** e **PostgreSQL**, complementado por **Redis** para cache-aside e **BullMQ** para processamento assíncrono.
+Optamos pela **Opção 2: Monólito Modular** desenvolvido sobre o framework **Fastify**, com **Prisma ORM** e **PostgreSQL**, complementado por **Redis** para cache-aside e **BullMQ** para processamento assíncrono.
 
 ### Justificativa
-- O Monólito Modular elimina a falácia da rede e a complexidade de transações distribuídas (Saga/2PC) na criação do pedido, mantendo a integridade referencial.
-- As fronteiras entre `catalog`, `orders` e `payment` são forçadas em nível de código (módulos exportam apenas contratos/serviços de domínio públicos).
-- O Prisma ORM fornece type safety de ponta a ponta, migrations declarativas e queries parametrizadas de alta performance.
+- **Monólito Modular:** Elimina a falácia da rede e a complexidade de transações distribuídas (Saga/2PC) na criação do pedido, mantendo a integridade referencial ACID.
+- **Adoção do Fastify e Pino Nativo:** Ao contrário do Express, o Fastify integra nativamente o **Pino** como seu mecanismo de logging. Isso traz duas vantagens fundamentais para os requisitos de observabilidade e desempenho:
+  1. **Logs estruturados em JSON de fábrica:** Todas as requisições e respostas já são serializadas em JSON padronizado com campos essenciais (`reqId`, `method`, `url`, `statusCode`, `responseTime`), atendendo diretamente ao requisito M3 de observabilidade sem necessidade de middlewares lentos de terceiros.
+  2. **Baixo overhead e alta vazão:** O Pino é o logger mais rápido do ecossistema Node.js, operando de forma assíncrona e sem bloquear o Event Loop, o que é crucial para sustentar os SLOs de baixa latência (p95 < 50ms) durante os testes de carga com o k6.
+- **Fronteiras Explícitas:** As fronteiras entre `catalog`, `orders` e `payment` são forçadas em nível de código (módulos exportam apenas contratos/serviços de domínio públicos).
+- **Prisma ORM:** Fornece type safety de ponta a ponta, migrations declarativas e queries parametrizadas de alta performance (`createMany` para carga em lote).
 
 ### Consequências Positivas
 - **Operação simples:** 1 único artefato executável (`dist/server.js`), facilitando pipelines de CI e deploy conteinerizado.
